@@ -18,6 +18,7 @@ gathering_table = Table('gathering', metadata,
         Column('weapon_grade', Integer),
         Column('primary_weapon', Boolean),
         Column('job_level', Integer),
+        Column('zone_id', Integer, ForeignKey('zone.id')),
         Column('ressource_id', Integer, ForeignKey('ressource.id')),
         Column('quantity', Integer),
         )
@@ -32,6 +33,11 @@ ressource_table = Table('ressource', metadata,
         Column('name', String),
         )
 
+zone_table = Table('zone', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('name', String),
+        )
+
 class Gathering(object):
     def __init__(self,
             source_type=None,
@@ -40,6 +46,7 @@ class Gathering(object):
             weapon_grade=1,
             primary_weapon=True,
             job_level=1,
+            zone=None,
             ressource=None,
             quantity=0,
             ):
@@ -48,6 +55,7 @@ class Gathering(object):
         self.source_level = source_level
         self.primary_weapon = primary_weapon
         self.job_level = job_level
+        self.zone = zone
         self.ressource = ressource
         self.quantity = quantity
 
@@ -74,13 +82,22 @@ class Ressource(object):
     def __repr__(self):
         return u"<Ressource: %s>" % self.name
 
+class Zone(object):
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return u"<Zone: %s>" % self.name
+
 
 mapper(Gathering, gathering_table, properties={
     'source_type': relationship(SourceType),
     'ressource': relationship(Ressource),
+    'zone': relationship(Zone),
     })
 mapper(SourceType, source_type_table)
 mapper(Ressource, ressource_table)
+mapper(Zone, zone_table)
 
 
 def bind(url):

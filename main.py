@@ -3,7 +3,7 @@
 import os
 import db
 from db import get_session
-from db import Gathering, SourceType, Ressource
+from db import Gathering, SourceType, Ressource, Zone
 
 
 def initialize_data():
@@ -14,6 +14,13 @@ def initialize_data():
         session.add(miner)
         session.add(botanist)
         session.add(fisher)
+
+        la_noscea = Zone('La Noscea')
+        thanalan = Zone('Thanalan')
+        the_black_shroud = Zone('The Black Shroud')
+        session.add(la_noscea)
+        session.add(thanalan)
+        session.add(the_black_shroud)
 
         tiger_cod = Ressource('Tiger Cod')
         malm_kelp = Ressource('Malm Kelp')
@@ -33,6 +40,7 @@ def initialize_data():
                     source_level=2,
                     primary_weapon=True,
                     job_level=11,
+                    zone=la_noscea,
                     ressource=bone_chip,
                     quantity=3),
                 )
