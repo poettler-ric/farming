@@ -2,8 +2,10 @@
 
 import os
 import db
+import cherrypy
 from db import get_session
 from db import Gathering, SourceType, Ressource, Zone
+from jinja2 import Environment, FileSystemLoader
 
 
 def initialize_data():
@@ -47,14 +49,31 @@ def initialize_data():
         for gathering in gatherings:
             session.add(gathering)
 
-file_name = r'c:/temp/farming.db'
-db_url = r'sqlite:///' + file_name
+def template(template):
+    def decorate(f):
+        def execute(*args, **kwargs):
+            result = f(*args, **kwargs)
+            return env.get_template(template).render(result)
+        return execute
+    return decorate
 
-os.remove(file_name)
+class Controller(object):
+    @cherrypy.expose
+    @template('gatherings.html')
+    def index(self):
+        with get_session() as session:
+            gatherings = session.query(Gathering).all()
+            return {'gatherings': gatherings}
+
+# setup database
+#db_url = r'sqlite:///c:/temp/farming.db'
+db_url = r'sqlite://'
 
 db.bind(db_url)
 initialize_data()
 
-with get_session() as session:
-    for gathering in session.query(Gathering).all():
-        print gathering
+# setup template environment
+env = Environment(loader=FileSystemLoader('templates'))
+
+# start cherrypy
+cherrypy.quickstart(Controller())
