@@ -3,51 +3,51 @@
 import os
 import db
 import cherrypy
-from db import get_session
+from db import Session
 from db import Gathering, SourceType, Ressource, Zone
 from jinja2 import Environment, FileSystemLoader
 
 
 def initialize_data():
-    with get_session() as session:
-        miner = SourceType('miner')
-        botanist = SourceType('botanist')
-        fisher = SourceType('fisher')
-        session.add(miner)
-        session.add(botanist)
-        session.add(fisher)
+    miner = SourceType('miner')
+    botanist = SourceType('botanist')
+    fisher = SourceType('fisher')
+    Session.add(miner)
+    Session.add(botanist)
+    Session.add(fisher)
 
-        la_noscea = Zone('La Noscea')
-        thanalan = Zone('Thanalan')
-        the_black_shroud = Zone('The Black Shroud')
-        session.add(la_noscea)
-        session.add(thanalan)
-        session.add(the_black_shroud)
+    la_noscea = Zone('La Noscea')
+    thanalan = Zone('Thanalan')
+    the_black_shroud = Zone('The Black Shroud')
+    Session.add(la_noscea)
+    Session.add(thanalan)
+    Session.add(the_black_shroud)
 
-        tiger_cod = Ressource('Tiger Cod')
-        malm_kelp = Ressource('Malm Kelp')
-        session.add(tiger_cod)
-        session.add(malm_kelp)
+    tiger_cod = Ressource('Tiger Cod')
+    malm_kelp = Ressource('Malm Kelp')
+    Session.add(tiger_cod)
+    Session.add(malm_kelp)
 
-        copper_ore = Ressource('Copper Ore')
-        yellow_copper_ore = Ressource('Yellow Copper Ore')
-        bone_chip = Ressource('Bone Chip')
-        session.add(copper_ore)
-        session.add(yellow_copper_ore)
-        session.add(bone_chip)
+    copper_ore = Ressource('Copper Ore')
+    yellow_copper_ore = Ressource('Yellow Copper Ore')
+    bone_chip = Ressource('Bone Chip')
+    Session.add(copper_ore)
+    Session.add(yellow_copper_ore)
+    Session.add(bone_chip)
 
-        gatherings = (
-                Gathering(source_type=miner,
-                    source_grade=1,
-                    source_level=2,
-                    primary_weapon=True,
-                    job_level=11,
-                    zone=la_noscea,
-                    ressource=bone_chip,
-                    quantity=3),
-                )
-        for gathering in gatherings:
-            session.add(gathering)
+    gatherings = (
+            Gathering(source_type=miner,
+                source_grade=1,
+                source_level=2,
+                primary_weapon=True,
+                job_level=11,
+                zone=la_noscea,
+                ressource=bone_chip,
+                quantity=3),
+            )
+    for gathering in gatherings:
+        Session.add(gathering)
+    Session.commit()
 
 def template(template):
     def decorate(f):
@@ -57,20 +57,18 @@ def template(template):
         return execute
     return decorate
 
+def close_session():
+    Session.close()
+
+cherrypy.tools.close_session = cherrypy.Tool('before_finalize', close_session)
+
 class Controller(object):
     @cherrypy.expose
+    @cherrypy.tools.close_session()
     @template('gatherings.html')
     def index(self):
-        with get_session() as session:
-            gatherings = session.query(Gathering).all()
-            return {'gatherings': gatherings}
-
-# setup database
-#db_url = r'sqlite:///c:/temp/farming.db'
-db_url = r'sqlite://'
-
-db.bind(db_url)
-initialize_data()
+        gatherings = Session.query(Gathering).all()
+        return {'gatherings': gatherings}
 
 # setup template environment
 env = Environment(loader=FileSystemLoader('templates'))

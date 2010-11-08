@@ -5,10 +5,20 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy import Table, Column, ForeignKey
 from sqlalchemy import Integer, Boolean, String
-from sqlalchemy.orm import sessionmaker, mapper, relationship
+from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import mapper, relationship
 
-metadata = MetaData()
-Session = None
+db_url = r'sqlite:///c:/temp/farming.db'
+clear = True
+
+engine = create_engine(db_url)
+
+metadata = MetaData(bind=engine)
+Session = scoped_session(sessionmaker(bind=engine))
+
+if clear:
+    metadata.drop_all()
+metadata.create_all()
 
 gathering_table = Table('gathering', metadata,
         Column('id', Integer, primary_key=True),
@@ -98,20 +108,3 @@ mapper(Gathering, gathering_table, properties={
 mapper(SourceType, source_type_table)
 mapper(Ressource, ressource_table)
 mapper(Zone, zone_table)
-
-
-def bind(url):
-    global Session
-    engine = create_engine(url)
-    metadata.bind = engine
-    metadata.create_all()
-    Session = sessionmaker(bind=engine)
-
-@contextmanager
-def get_session():
-    session = Session()
-    try:
-        yield session
-        session.commit()
-    finally:
-        session.close()
