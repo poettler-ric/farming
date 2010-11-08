@@ -64,7 +64,6 @@ cherrypy.tools.close_session = cherrypy.Tool('before_finalize', close_session)
 
 class Controller(object):
     @cherrypy.expose
-    @cherrypy.tools.close_session()
     @template('gatherings.html')
     def index(self):
         gatherings = Session.query(Gathering).all()
@@ -74,4 +73,9 @@ class Controller(object):
 env = Environment(loader=FileSystemLoader('templates'))
 
 # start cherrypy
-cherrypy.quickstart(Controller())
+cherrypy.config.update({
+    'tools.close_session.on': True
+    })
+cherrypy.tree.mount(Controller(), '/')
+cherrypy.engine.start()
+cherrypy.engine.block()
