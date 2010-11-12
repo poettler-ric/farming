@@ -47,22 +47,23 @@ def initialize_data():
         Session.add(gathering)
     Session.commit()
 
-def template(template):
-    def decorate(f):
-        def execute(*args, **kwargs):
-            result = f(*args, **kwargs)
-            return env.get_template(template).render(result)
-        return execute
-    return decorate
-
 def close_session():
     Session.close()
 
 cherrypy.tools.close_session = cherrypy.Tool('before_finalize', close_session)
 
+def render_template(template=None):
+    oldhandler = cherrypy.request.handler
+    def render(*args, **kwargs):
+        result = oldhandler(*args, **kwargs)
+        return env.get_template(template).render(result)
+    cherrypy.request.handler = render
+
+cherrypy.tools.render = cherrypy.Tool('before_handler', render_template)
+
 class Controller(object):
     @cherrypy.expose()
-    @template('gatherings.html')
+    @cherrypy.tools.render(template='gatherings.html')
     @cherrypy.tools.close_session()
     def index(self):
         gatherings = Session.query(Gathering).all()
