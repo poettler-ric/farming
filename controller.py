@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-import os
-import db
 import cherrypy
 from db import Session
 from db import Gathering, SourceType, Ressource, Zone
@@ -63,7 +61,7 @@ def close_session():
 cherrypy.tools.close_session = cherrypy.Tool('before_finalize', close_session)
 
 class Controller(object):
-    @cherrypy.expose
+    @cherrypy.expose()
     @template('gatherings.html')
     def index(self):
         gatherings = Session.query(Gathering).all()
