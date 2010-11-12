@@ -8,7 +8,7 @@ from sqlalchemy import Integer, Boolean, String
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import mapper, relationship
 
-db_url = r'sqlite:///c:/temp/farming.db'
+db_url = r'sqlite:///farming.db'
 clear = True
 
 engine = create_engine(db_url)
