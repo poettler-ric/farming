@@ -67,6 +67,9 @@ class Controller(object):
         gatherings = Session.query(Gathering).all()
         return {'gatherings': gatherings}
 
+# fill the db with initial data
+initialize_data()
+
 # setup template environment
 env = Environment(loader=FileSystemLoader('templates'))
 

@@ -16,10 +16,6 @@ engine = create_engine(db_url)
 metadata = MetaData(bind=engine)
 Session = scoped_session(sessionmaker(bind=engine))
 
-if clear:
-    metadata.drop_all()
-metadata.create_all()
-
 gathering_table = Table('gathering', metadata,
         Column('id', Integer, primary_key=True),
         Column('source_type_id', Integer, ForeignKey('source_type.id')),
@@ -108,3 +104,7 @@ mapper(Gathering, gathering_table, properties={
 mapper(SourceType, source_type_table)
 mapper(Ressource, ressource_table)
 mapper(Zone, zone_table)
+
+if clear:
+    metadata.drop_all()
+metadata.create_all()
