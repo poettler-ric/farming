@@ -1,6 +1,6 @@
 {% extends 'master.html' %}
 {%- block content%}
     {% for gathering in gatherings %}
-	{{ gathering }}
+	{{ gathering|e }}
     {% endfor %}
 {% endblock -%}
