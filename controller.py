@@ -61,17 +61,31 @@ def render_template(template=None):
 
 cherrypy.tools.render = cherrypy.Tool('before_handler', render_template)
 
-from repoze.what.predicates import not_anonymous
+from repoze.what.predicates import not_anonymous, NotAuthorizedError, has_permission
 
 class Controller(object):
     @cherrypy.expose()
     @cherrypy.tools.render(template='gatherings.html')
     @cherrypy.tools.close_session()
     def index(self):
-        #not_anonymous(msg='log in!')\
-            #.check_authorization(cherrypy.request.wsgi_environ)
+        debug = not_anonymous(msg='log in!')\
+            .is_met(cherrypy.request.wsgi_environ)
+        print "userid:", cherrypy.request.wsgi_environ.get('repoze.who.userid', None)
+        print "identity:", dict(cherrypy.request.wsgi_environ.get('repoze.who.identity', None))
+        print "REMOTE_USER:", cherrypy.request.wsgi_environ.get('REMOTE_USER', None)
+        try:
+            not_anonymous(msg='log in!')\
+                .check_authorization(cherrypy.request.wsgi_environ)
+            #has_permission('new').check_authorization(cherrypy.request.wsgi_environ)
+        except NotAuthorizedError, e:
+            if 'repoze.who.identity' in cherrypy.request.wsgi_environ:
+                print "forbidden"
+                raise cherrypy.HTTPError(403, str(e)) # forbidden
+            else:
+                print "unauthorized"
+                raise cherrypy.HTTPError(401, str(e)) # unauthorized
         gatherings = Session.query(Gathering).all()
-        return {'gatherings': gatherings}
+        return {'gatherings': gatherings, 'debug': debug}
 
 # fill the db with initial data
 initialize_data()
@@ -84,10 +98,6 @@ cherrypy.config.update({
     #'tools.close_session.on': True,
     })
 app = cherrypy.Application(Controller())
-
-#cherrypy.tree.mount(app, '/')
-#cherrypy.engine.start()
-#cherrypy.engine.block()
 
 ###############################################################################
 
@@ -193,35 +203,36 @@ user_dict = {
 }
 
 group_dict = {
-    'male': set('richi'),
-    'older': set(('richi', 'chrissi')),
+    'male': set(['richi']),
+    'older': set(['richi', 'chrissi']),
 }
 
 permission_dict = {
     'new': set(),
-    'edit': set('older'),
-    'delete': set(('male', 'older')),
+    'edit': set(['older']),
+    'delete': set(['male', 'older']),
 }
+
+groups = {'all_groups': DictGroupSource(group_dict)}
+permissions = {'all_permissions': DictPermissionSource(permission_dict)}
+
 
 basicauth = BasicAuthPlugin('Private section')
 identifiers = [('basicauth', basicauth)]
 
-authentificators = [('mapauth', MapAuthenticator(user_dict))]
-groups = [('all_groups', DictGroupSource(group_dict))]
-permissions = [('all_permissions', DictPermissionSource(permission_dict))]
+authenticators = [('mapauth', MapAuthenticator(user_dict))]
 
 challengers = [('basicauth', basicauth)]
 
-auth_app = setup_auth(app)
+auth_app = setup_auth(app,
         groups,
         permissions,
         identifiers=identifiers,
-        authenticators=authentificators,
+        authenticators=authenticators,
         challengers=challengers,
         )
 ###############################################################################
 
-app.wsgiapp.pipeline.append(('repoze.what', auth_app))
-cherrypy.tree.mount(auth_app, '/')
+cherrypy.tree.graft(auth_app, '/')
 cherrypy.engine.start()
 cherrypy.engine.block()
