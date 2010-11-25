@@ -61,7 +61,8 @@ def render_template(template=None):
 
 cherrypy.tools.render = cherrypy.Tool('before_handler', render_template)
 
-from repoze.what.predicates import not_anonymous, NotAuthorizedError, has_permission
+from repoze.what.predicates import NotAuthorizedError
+from repoze.what.predicates import not_anonymous, has_permission
 
 class Controller(object):
     @cherrypy.expose()
@@ -71,7 +72,8 @@ class Controller(object):
         debug = not_anonymous(msg='log in!')\
             .is_met(cherrypy.request.wsgi_environ)
         print "userid:", cherrypy.request.wsgi_environ.get('repoze.who.userid', None)
-        print "identity:", dict(cherrypy.request.wsgi_environ.get('repoze.who.identity', None))
+        identity = cherrypy.request.wsgi_environ.get('repoze.who.identity', None)
+        print "identity:", dict(identity if identity else {})
         print "REMOTE_USER:", cherrypy.request.wsgi_environ.get('REMOTE_USER', None)
         try:
             not_anonymous(msg='log in!')\
@@ -87,6 +89,19 @@ class Controller(object):
         gatherings = Session.query(Gathering).all()
         return {'gatherings': gatherings, 'debug': debug}
 
+    @cherrypy.expose()
+    @cherrypy.tools.render(template='login.html')
+    def login(self, *args, **kwargs):
+        return kwargs
+
+    @cherrypy.expose()
+    def do_login(self, *args, **kwargs):
+        return "do_login"
+
+    @cherrypy.expose()
+    def do_logout(self, *args, **kwargs):
+        return "do_logout"
+
 # fill the db with initial data
 initialize_data()
 
@@ -101,9 +116,10 @@ app = cherrypy.Application(Controller())
 
 ###############################################################################
 
-from repoze.what.middleware import setup_auth
-from repoze.who.plugins.basicauth import BasicAuthPlugin
 from repoze.what.adapters import BaseSourceAdapter
+from repoze.what.middleware import setup_auth
+from repoze.who.plugins.auth_tkt import AuthTktCookiePlugin
+from repoze.who.plugins.form import RedirectingFormPlugin
 
 class MapAuthenticator(object):
     def __init__(self, users):
@@ -216,13 +232,16 @@ permission_dict = {
 groups = {'all_groups': DictGroupSource(group_dict)}
 permissions = {'all_permissions': DictPermissionSource(permission_dict)}
 
+cookieident = AuthTktCookiePlugin('mySuperSecretSecret')
 
-basicauth = BasicAuthPlugin('Private section')
-identifiers = [('basicauth', basicauth)]
+formauth = RedirectingFormPlugin('/login',
+        '/do_login',
+        '/do_logout',
+        rememberer_name='cookieident')
+identifiers = [('formauth', formauth), ('cookieident', cookieident)]
+challengers = [('formauth', formauth)]
 
 authenticators = [('mapauth', MapAuthenticator(user_dict))]
-
-challengers = [('basicauth', basicauth)]
 
 auth_app = setup_auth(app,
         groups,
