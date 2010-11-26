@@ -67,29 +67,33 @@ def render_template(template=None):
 
 cherrypy.tools.render = cherrypy.Tool('before_handler', render_template)
 
+def permission(predicate=None):
+    oldhandler = cherrypy.request.handler
+    def check_permission(*args, **kwargs):
+        environment = cherrypy.request.wsgi_environ
+        identity = environment.get('repoze.who.identity', None)
+        try:
+            #print dict(identity if identity else {})
+            predicate.check_authorization(environment)
+            result = oldhandler(*args, **kwargs)
+            return result
+        except NotAuthorizedError as e:
+            if identity: # not authorized
+                raise cherrypy.HTTPError(403, str(e))
+            else: # not authenticated
+                raise cherrypy.HTTPError(401, str(e))
+    cherrypy.request.handler = check_permission
+
+cherrypy.tools.permission = cherrypy.Tool('before_handler', permission)
 
 class Controller(object):
     @cherrypy.expose()
     @cherrypy.tools.render(template='gatherings.html')
+    @cherrypy.tools.permission(predicate=not_anonymous(msg='log in!'))
     @cherrypy.tools.close_session()
     def index(self):
         debug = not_anonymous(msg='log in!')\
             .is_met(cherrypy.request.wsgi_environ)
-        print "userid:", cherrypy.request.wsgi_environ.get('repoze.who.userid', None)
-        identity = cherrypy.request.wsgi_environ.get('repoze.who.identity', None)
-        print "identity:", dict(identity if identity else {})
-        print "REMOTE_USER:", cherrypy.request.wsgi_environ.get('REMOTE_USER', None)
-        try:
-            not_anonymous(msg='log in!')\
-                .check_authorization(cherrypy.request.wsgi_environ)
-            #has_permission('new').check_authorization(cherrypy.request.wsgi_environ)
-        except NotAuthorizedError, e:
-            if 'repoze.who.identity' in cherrypy.request.wsgi_environ:
-                print "forbidden"
-                raise cherrypy.HTTPError(403, str(e)) # forbidden
-            else:
-                print "unauthorized"
-                raise cherrypy.HTTPError(401, str(e)) # unauthorized
         gatherings = Session.query(Gathering).all()
         return {'gatherings': gatherings, 'debug': debug}
 
