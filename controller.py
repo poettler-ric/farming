@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 
-import cherrypy
-from db import Session
 from db import Gathering, SourceType, Ressource, Zone
+from db import Session
 from jinja2 import Environment, FileSystemLoader
+from repoze.what.middleware import setup_auth
+from repoze.what.predicates import not_anonymous, has_permission
+from repoze.what.predicates import NotAuthorizedError
+from repoze.who.plugins.auth_tkt import AuthTktCookiePlugin
+from repoze.who.plugins.form import RedirectingFormPlugin
 from security import DictAuthenticator, DictGroupSource, DictPermissionSource
+import cherrypy
 
 
 def initialize_data():
@@ -62,8 +67,6 @@ def render_template(template=None):
 
 cherrypy.tools.render = cherrypy.Tool('before_handler', render_template)
 
-from repoze.what.predicates import NotAuthorizedError
-from repoze.what.predicates import not_anonymous, has_permission
 
 class Controller(object):
     @cherrypy.expose()
@@ -115,11 +118,6 @@ cherrypy.config.update({
     })
 app = cherrypy.Application(Controller())
 
-###############################################################################
-
-from repoze.what.middleware import setup_auth
-from repoze.who.plugins.auth_tkt import AuthTktCookiePlugin
-from repoze.who.plugins.form import RedirectingFormPlugin
 # setup the security
 user_dict = {
     'richi': 'richi',
@@ -160,8 +158,8 @@ auth_app = setup_auth(app,
         authenticators=authenticators,
         challengers=challengers,
         )
-###############################################################################
 
+# mount the application
 cherrypy.tree.graft(auth_app, '/')
 cherrypy.engine.start()
 cherrypy.engine.block()
